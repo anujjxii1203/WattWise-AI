@@ -1,0 +1,16 @@
+date,consumption_kwh,category,tariff,notes
+2026-10-01,24.5,Cooling & HVAC,7.5,Main conference hall cooling
+2026-10-01,7.2,Lighting,7.5,Evening corridor fixtures
+2026-10-01,11.0,Office Equipment,7.5,Workstation power racks
+2026-10-02,22.8,Cooling & HVAC,7.5,AC units set to 24°C
+2026-10-02,6.8,Lighting,7.5,Automated daylight sensors active
+2026-10-02,9.4,Office Equipment,7.5,Normal working hours
+2026-10-03,14.2,Cooling & HVAC,7.5,Reduced weekend cycle
+2026-10-03,4.1,Lighting,7.5,Emergency and security lighting only
+2026-10-04,13.5,Cooling & HVAC,7.5,Sunday standby mode
+2026-10-05,26.4,Cooling & HVAC,7.5,Monday startup load
+2026-10-05,8.1,Lighting,7.5,Full hall illumination
+2026-10-05,12.3,Office Equipment,7.5,Computer lab sessions
+2026-10-06,23.0,Cooling & HVAC,7.5,Standard thermal schedule
+2026-10-06,7.5,Lighting,7.5,LED fixtures
+2026-10-07,25.2,Cooling & HVAC,7.5,High ambient temp afternoon

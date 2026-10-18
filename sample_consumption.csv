@@ -1,0 +1,5 @@
+date,consumption_kwh,category,tariff,notes
+2026-09-01,18.5,Cooling,7.0,AC running all day
+2026-09-01,3.2,Lighting,7.0,
+2026-09-02,5.9,Appliances,7.0,Washing machine
+2026-09-02,4.1,Office Equipment,7.0,
