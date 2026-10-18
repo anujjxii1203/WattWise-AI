@@ -141,7 +141,12 @@ def create_app():
             t, e1 = num(b, "tariff", "Tariff", 0.01, 1000)
             f, e2 = num(b, "emission_factor", "Emission factor", 0, 5)
             if e1 or e2: return fail("Validation failed.", 422, [e for e in (e1, e2) if e])
+            old_t = float(db["settings"].get("tariff", 7.0))
             db["settings"] = {"tariff": t, "emission_factor": f, "emission_source": str(b.get("emission_source", ""))[:200]}
+            if b.get("update_records", True):
+                for r in db["records"]:
+                    if r.get("demo") or abs(float(r.get("tariff", 0)) - old_t) < 1e-4:
+                        r["tariff"] = t
             store.save(db)
         return ok(db["settings"])
 

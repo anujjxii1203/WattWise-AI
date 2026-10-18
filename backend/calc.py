@@ -186,8 +186,17 @@ def analytics(records, s, baseline=None):
 
     # Action Center: Identify top problem to fix & progress tracking
     top_rec = max(recs, key=lambda x: x["saving_kwh_month"])
-    prev_7_avg = round(float(prev.sum()) / len(prev), 2) if len(prev) >= 4 else round(base_avg, 2)
-    cur_7_avg = round(cur / 7.0, 2) if cur else round(avg, 2)
+    cur_series = daily[daily.index > end - pd.Timedelta(days=7)]
+    cur_7_avg = round(float(cur_series.mean()), 2) if len(cur_series) else round(avg, 2)
+    prev_7_avg = round(float(prev.mean()), 2) if len(prev) >= 4 else round(base_avg, 2)
+    
+    cur_win = f"{cur_series.index.min().strftime('%d %b')} – {cur_series.index.max().strftime('%d %b %Y')}" if len(cur_series) else ""
+    prev_win = f"{prev.index.min().strftime('%d %b')} – {prev.index.max().strftime('%d %b %Y')}" if len(prev) else "Historical baseline"
+    
+    # Target reduction dynamically tailored to the identified problem
+    target_pct = min(25.0, max(5.0, round(top_rec["saving_kwh_month"] / (avg * 30) * 100, 1))) if avg else 8.0
+    target_7d_avg = round(cur_7_avg * (1 - target_pct / 100), 2)
+
     action_center = {
         "problem": top_rec["problem"],
         "title": top_rec["title"],
@@ -203,9 +212,12 @@ def analytics(records, s, baseline=None):
         "progress": {
             "current_7d_avg": cur_7_avg,
             "baseline_7d_avg": prev_7_avg,
+            "current_window": cur_win,
+            "baseline_window": prev_win,
+            "target_reduction_pct": target_pct,
+            "target_7d_avg": target_7d_avg,
             "change_pct": change,
-            "status": "Needs Attention" if (change and change > 5) or score < 70 else "On Track",
-            "target_7d_avg": round(prev_7_avg * 0.92, 2)  # target 8% reduction
+            "status": "Needs Attention" if (change and change > 5) or score < 70 else "On Track"
         }
     }
 

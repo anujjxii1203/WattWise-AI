@@ -94,18 +94,32 @@ export function ActionCenterCard({ ac, go }) {
             </div>
           </div>
 
-          <div className="border-t border-slate-100 pt-2">
+          <div className="border-t border-slate-100 pt-2 space-y-1">
             <div className="flex justify-between text-xs text-slate-600 font-medium">
-              <span>7-Day Tracking</span>
-              <span>{ac.progress.current_7d_avg} kWh/d (avg)</span>
+              <span>Current 7-Day Window</span>
+              <span className="font-semibold text-slate-900">{ac.progress.current_7d_avg} kWh/d</span>
             </div>
+            {ac.progress.current_window && (
+              <div className="text-[10px] text-slate-500 text-right">
+                {ac.progress.current_window}
+              </div>
+            )}
             <div className="mt-1 flex justify-between text-[11px] text-slate-500">
-              <span>Prior baseline: {ac.progress.baseline_7d_avg} kWh/d</span>
-              <span>Target: {ac.progress.target_7d_avg} kWh/d</span>
+              <span>Prior Baseline:</span>
+              <span>{ac.progress.baseline_7d_avg} kWh/d</span>
+            </div>
+            {ac.progress.baseline_window && (
+              <div className="text-[10px] text-slate-400 text-right">
+                {ac.progress.baseline_window}
+              </div>
+            )}
+            <div className="flex justify-between text-[11px] text-emerald-800 font-medium bg-emerald-50/80 px-2 py-0.5 rounded">
+              <span>Target Goal (-{ac.progress.target_reduction_pct}%):</span>
+              <span>{ac.progress.target_7d_avg} kWh/d</span>
             </div>
             {ac.progress.change_pct != null && (
-              <p className={`mt-1.5 text-xs font-medium ${ac.progress.change_pct > 0 ? "text-amber-800" : "text-emerald-700"}`}>
-                {ac.progress.change_pct > 0 ? `+${ac.progress.change_pct}% rise vs prior week` : `${ac.progress.change_pct}% reduction achieved`}
+              <p className={`pt-0.5 text-xs font-medium ${ac.progress.change_pct > 0 ? "text-amber-800" : "text-emerald-700"}`}>
+                {ac.progress.change_pct > 0 ? `+${ac.progress.change_pct}% rise vs prior baseline` : `${ac.progress.change_pct}% reduction achieved`}
               </p>
             )}
           </div>
