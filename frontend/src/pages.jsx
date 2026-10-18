@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ComposedChart, Line, Legend } from "recharts";
-import { Zap, IndianRupee, Leaf, PiggyBank, Trash2, Pencil, Download, Upload, AlertTriangle, CheckCircle, Search, Filter, Calendar, TrendingUp, Info, ChevronLeft, ChevronRight, Target, ArrowRight } from "lucide-react";
+import { Zap, IndianRupee, Leaf, PiggyBank, Trash2, Pencil, Download, Upload, AlertTriangle, CheckCircle, Search, Filter, Calendar, TrendingUp, Info, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Target, ArrowRight } from "lucide-react";
 import { api, BASE } from "./api";
 import { Card, Stat, Notice, Field, Btn, Tabs, Errors, inr, num } from "./ui.jsx";
 
@@ -35,102 +35,131 @@ const Chart = ({ rows, kind }) => (
   </div>
 );
 
-export function ActionCenterCard({ ac, go }) {
+export function ActionCenterCard({ ac, go, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen);
   if (!ac) return null;
   const isAttention = ac.progress.status === "Needs Attention";
+
   return (
-    <div className={`rounded-xl border p-5 shadow-sm ${isAttention ? "border-amber-300 bg-amber-50/40" : "border-emerald-300 bg-emerald-50/40"}`}>
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/60 pb-3">
-        <div className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-green-800 text-white font-bold text-xs">AI</span>
+    <div className={`rounded-xl border shadow-xs transition-all duration-200 overflow-hidden ${isAttention ? "border-amber-300 bg-amber-50/40" : "border-emerald-300 bg-emerald-50/40"}`}>
+      {/* Dropdown Header Trigger */}
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className="w-full text-left p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3 cursor-pointer hover:bg-white/40 transition-colors"
+        aria-expanded={open}
+      >
+        <div className="flex items-center gap-3">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-800 text-white font-bold text-xs shadow-xs">
+            AI
+          </span>
           <div>
-            <h2 className="text-sm font-bold uppercase tracking-wider text-green-950">WattWise Action Center</h2>
-            <p className="text-xs text-slate-500">Top Problem to Fix & Targeted 7-Day Progress</p>
-          </div>
-        </div>
-        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${isAttention ? "bg-amber-100 text-amber-900 border border-amber-300" : "bg-emerald-100 text-emerald-900 border border-emerald-300"}`}>
-          {isAttention ? <AlertTriangle size={12} /> : <CheckCircle size={12} />}
-          {ac.progress.status}
-        </span>
-      </div>
-
-      <div className="mt-3 grid gap-4 lg:grid-cols-3">
-        <div className="space-y-2 lg:col-span-2">
-          <div>
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Problem Identified</span>
-            <p className="font-semibold text-slate-900">{ac.problem}</p>
-          </div>
-          <div>
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Evidence</span>
-            <p className="text-sm text-slate-700">{ac.evidence}</p>
-          </div>
-          <div className="rounded-lg bg-white/80 p-3 border border-slate-200/80">
-            <span className="text-xs font-semibold text-green-900 uppercase tracking-wide flex items-center gap-1">
-              <CheckCircle size={14} className="text-green-700" /> Suggested Action
-            </span>
-            <p className="mt-1 text-sm font-medium text-slate-800">{ac.action}</p>
-          </div>
-          <div className="text-xs text-slate-500 pt-1">
-            <b>Assumptions:</b> {ac.assumptions} · <span className="font-medium text-slate-700">Confidence: {ac.confidence}</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-green-950">WattWise Action Center</h2>
+              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${isAttention ? "bg-amber-100 text-amber-900 border border-amber-300" : "bg-emerald-100 text-emerald-900 border border-emerald-300"}`}>
+                {isAttention ? <AlertTriangle size={11} /> : <CheckCircle size={11} />}
+                {ac.progress.status}
+              </span>
+            </div>
+            <p className="text-xs text-slate-600 mt-0.5 font-medium">
+              Top Priority: <span className="font-semibold text-slate-900">{ac.problem}</span>
+            </p>
           </div>
         </div>
 
-        <div className="flex flex-col justify-between space-y-3 rounded-lg bg-white p-4 border border-slate-200/90 shadow-sm">
-          <div>
-            <span className="text-xs font-bold uppercase text-slate-500 tracking-wider">Potential Monthly Impact</span>
-            <div className="mt-2 grid grid-cols-3 gap-1 text-center">
-              <div className="rounded bg-green-50 p-1.5 border border-green-100">
-                <div className="text-sm font-bold text-green-900">{num(ac.impact.saving_kwh_month)}</div>
-                <div className="text-[10px] text-green-700">kWh/mo</div>
-              </div>
-              <div className="rounded bg-teal-50 p-1.5 border border-teal-100">
-                <div className="text-sm font-bold text-teal-900">{inr(ac.impact.saving_cost_month)}</div>
-                <div className="text-[10px] text-teal-700">bill/mo</div>
-              </div>
-              <div className="rounded bg-emerald-50 p-1.5 border border-emerald-100">
-                <div className="text-sm font-bold text-emerald-900">{num(ac.impact.saving_co2_month)}</div>
-                <div className="text-[10px] text-emerald-700">kg CO₂e</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-slate-100 pt-2 space-y-1">
-            <div className="flex justify-between text-xs text-slate-600 font-medium">
-              <span>Current 7-Day Window</span>
-              <span className="font-semibold text-slate-900">{ac.progress.current_7d_avg} kWh/d</span>
-            </div>
-            {ac.progress.current_window && (
-              <div className="text-[10px] text-slate-500 text-right">
-                {ac.progress.current_window}
-              </div>
-            )}
-            <div className="mt-1 flex justify-between text-[11px] text-slate-500">
-              <span>Prior Baseline:</span>
-              <span>{ac.progress.baseline_7d_avg} kWh/d</span>
-            </div>
-            {ac.progress.baseline_window && (
-              <div className="text-[10px] text-slate-400 text-right">
-                {ac.progress.baseline_window}
-              </div>
-            )}
-            <div className="flex justify-between text-[11px] text-emerald-800 font-medium bg-emerald-50/80 px-2 py-0.5 rounded">
-              <span>Target Goal (-{ac.progress.target_reduction_pct}%):</span>
-              <span>{ac.progress.target_7d_avg} kWh/d</span>
-            </div>
-            {ac.progress.change_pct != null && (
-              <p className={`pt-0.5 text-xs font-medium ${ac.progress.change_pct > 0 ? "text-amber-800" : "text-emerald-700"}`}>
-                {ac.progress.change_pct > 0 ? `+${ac.progress.change_pct}% rise vs prior baseline` : `${ac.progress.change_pct}% reduction achieved`}
-              </p>
-            )}
-          </div>
-
-          {go && (
-            <Btn kind="ghost" className="w-full text-xs py-1.5" onClick={() => go("insights")}>
-              View All Insights <ArrowRight size={12} />
-            </Btn>
-          )}
+        <div className="flex items-center gap-2 ml-auto">
+          <span className="hidden sm:inline-flex items-center gap-1 rounded-md bg-white/90 border border-slate-200 px-2.5 py-1 text-xs font-semibold text-green-900 shadow-xs">
+            ⚡ Save {num(ac.impact.saving_kwh_month)} kWh/mo ({inr(ac.impact.saving_cost_month)})
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50">
+            {open ? "Collapse" : "Expand Details"}
+            {open ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+          </span>
         </div>
-      </div>
+      </button>
+
+      {/* Dropdown Expanded Details */}
+      {open && (
+        <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-3 border-t border-slate-200/70">
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div className="space-y-2 lg:col-span-2">
+              <div>
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Problem Identified</span>
+                <p className="font-semibold text-slate-900">{ac.problem}</p>
+              </div>
+              <div>
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Evidence</span>
+                <p className="text-sm text-slate-700">{ac.evidence}</p>
+              </div>
+              <div className="rounded-lg bg-white/80 p-3 border border-slate-200/80">
+                <span className="text-xs font-semibold text-green-900 uppercase tracking-wide flex items-center gap-1">
+                  <CheckCircle size={14} className="text-green-700" /> Suggested Action
+                </span>
+                <p className="mt-1 text-sm font-medium text-slate-800">{ac.action}</p>
+              </div>
+              <div className="text-xs text-slate-500 pt-1">
+                <b>Assumptions:</b> {ac.assumptions} · <span className="font-medium text-slate-700">Confidence: {ac.confidence}</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col justify-between space-y-3 rounded-lg bg-white p-4 border border-slate-200/90 shadow-sm">
+              <div>
+                <span className="text-xs font-bold uppercase text-slate-500 tracking-wider">Potential Monthly Impact</span>
+                <div className="mt-2 grid grid-cols-3 gap-1 text-center">
+                  <div className="rounded bg-green-50 p-1.5 border border-green-100">
+                    <div className="text-sm font-bold text-green-900">{num(ac.impact.saving_kwh_month)}</div>
+                    <div className="text-[10px] text-green-700">kWh/mo</div>
+                  </div>
+                  <div className="rounded bg-teal-50 p-1.5 border border-teal-100">
+                    <div className="text-sm font-bold text-teal-900">{inr(ac.impact.saving_cost_month)}</div>
+                    <div className="text-[10px] text-teal-700">bill/mo</div>
+                  </div>
+                  <div className="rounded bg-emerald-50 p-1.5 border border-emerald-100">
+                    <div className="text-sm font-bold text-emerald-900">{num(ac.impact.saving_co2_month)}</div>
+                    <div className="text-[10px] text-emerald-700">kg CO₂e</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-100 pt-2 space-y-1">
+                <div className="flex justify-between text-xs text-slate-600 font-medium">
+                  <span>Current 7-Day Window</span>
+                  <span className="font-semibold text-slate-900">{ac.progress.current_7d_avg} kWh/d</span>
+                </div>
+                {ac.progress.current_window && (
+                  <div className="text-[10px] text-slate-500 text-right">
+                    {ac.progress.current_window}
+                  </div>
+                )}
+                <div className="mt-1 flex justify-between text-[11px] text-slate-500">
+                  <span>Prior Baseline:</span>
+                  <span>{ac.progress.baseline_7d_avg} kWh/d</span>
+                </div>
+                {ac.progress.baseline_window && (
+                  <div className="text-[10px] text-slate-400 text-right">
+                    {ac.progress.baseline_window}
+                  </div>
+                )}
+                <div className="flex justify-between text-[11px] text-emerald-800 font-medium bg-emerald-50/80 px-2 py-0.5 rounded">
+                  <span>Target Goal (-{ac.progress.target_reduction_pct}%):</span>
+                  <span>{ac.progress.target_7d_avg} kWh/d</span>
+                </div>
+                {ac.progress.change_pct != null && (
+                  <p className={`pt-0.5 text-xs font-medium ${ac.progress.change_pct > 0 ? "text-amber-800" : "text-emerald-700"}`}>
+                    {ac.progress.change_pct > 0 ? `+${ac.progress.change_pct}% rise vs prior baseline` : `${ac.progress.change_pct}% reduction achieved`}
+                  </p>
+                )}
+              </div>
+
+              {go && (
+                <Btn kind="ghost" className="w-full text-xs py-1.5" onClick={() => go("insights")}>
+                  View All Insights <ArrowRight size={12} />
+                </Btn>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -488,7 +517,7 @@ export function Insights({ a, go }) {
       <DemoBanner a={a} />
       
       {/* WattWise Action Center */}
-      {a.action_center && <ActionCenterCard ac={a.action_center} />}
+      {a.action_center && <ActionCenterCard ac={a.action_center} defaultOpen={true} />}
 
       <Notice>{a.recommendation_basis}</Notice>
       
