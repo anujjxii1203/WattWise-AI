@@ -257,3 +257,209 @@ def scenario(current_kwh, reduction_pct, tariff, ef):
     return {"current": {"kwh": round(current_kwh, 2), "cost": round(current_kwh * tariff, 2), "co2": round(current_kwh * ef, 2)},
             "proposed": {"kwh": round(new, 2), "cost": round(new * tariff, 2), "co2": round(new * ef, 2)},
             "saved": {"kwh": round(current_kwh - new, 2), "cost": round((current_kwh - new) * tariff, 2), "co2": round((current_kwh - new) * ef, 2)}}
+
+DEFAULT_APPLIANCES = [
+    {
+        "id": "app_ac_1",
+        "name": "1.5 Ton Split AC (Office / Hall)",
+        "category": "Cooling",
+        "wattage": 1500,
+        "quantity": 2,
+        "hours_per_day": 8.0,
+        "days_per_month": 26,
+        "efficiency_upgrade": "Upgrade to 5-Star Inverter AC (1050W)",
+        "upgrade_wattage": 1050,
+        "sim_wattage": 1500,
+        "sim_quantity": 2,
+        "sim_hours": 8.0,
+        "sim_days": 26
+    },
+    {
+        "id": "app_fan_1",
+        "name": "Ceiling Fans (Standard Induction)",
+        "category": "Cooling",
+        "wattage": 75,
+        "quantity": 6,
+        "hours_per_day": 10.0,
+        "days_per_month": 26,
+        "efficiency_upgrade": "Upgrade to 5-Star BLDC Motor (28W)",
+        "upgrade_wattage": 28,
+        "sim_wattage": 75,
+        "sim_quantity": 6,
+        "sim_hours": 10.0,
+        "sim_days": 26
+    },
+    {
+        "id": "app_light_1",
+        "name": "Tubelights / Conventional Fixtures",
+        "category": "Lighting",
+        "wattage": 40,
+        "quantity": 12,
+        "hours_per_day": 9.0,
+        "days_per_month": 26,
+        "efficiency_upgrade": "Retrofit to 20W LED Battens",
+        "upgrade_wattage": 20,
+        "sim_wattage": 40,
+        "sim_quantity": 12,
+        "sim_hours": 9.0,
+        "sim_days": 26
+    },
+    {
+        "id": "app_pc_1",
+        "name": "Desktop Workstations & Monitors",
+        "category": "Office Equipment",
+        "wattage": 180,
+        "quantity": 4,
+        "hours_per_day": 8.0,
+        "days_per_month": 24,
+        "efficiency_upgrade": "Switch to 60W Mini-PCs or Laptops",
+        "upgrade_wattage": 60,
+        "sim_wattage": 180,
+        "sim_quantity": 4,
+        "sim_hours": 8.0,
+        "sim_days": 24
+    },
+    {
+        "id": "app_fridge_1",
+        "name": "Refrigerator (Frost-Free 300L)",
+        "category": "Appliances",
+        "wattage": 180,
+        "quantity": 1,
+        "hours_per_day": 12.0,
+        "days_per_month": 30,
+        "efficiency_upgrade": "5-Star Inverter Refrigerator (110W duty)",
+        "upgrade_wattage": 110,
+        "sim_wattage": 180,
+        "sim_quantity": 1,
+        "sim_hours": 12.0,
+        "sim_days": 30
+    },
+    {
+        "id": "app_printer_1",
+        "name": "Network Printer / Photocopier",
+        "category": "Office Equipment",
+        "wattage": 80,
+        "quantity": 1,
+        "hours_per_day": 6.0,
+        "days_per_month": 24,
+        "efficiency_upgrade": "Eco-Sleep Auto-Standby Mode (25W)",
+        "upgrade_wattage": 25,
+        "sim_wattage": 80,
+        "sim_quantity": 1,
+        "sim_hours": 6.0,
+        "sim_days": 24
+    }
+]
+
+def digital_twin_estimate(appliances, tariff, ef, measured_monthly_kwh=None):
+    items = []
+    base_total_kwh = 0.0
+    sim_total_kwh = 0.0
+    base_cats = {}
+    sim_cats = {}
+
+    for a in appliances:
+        w = max(0.0, float(a.get("wattage", 0)))
+        q = max(0, int(a.get("quantity", 1)))
+        h = min(24.0, max(0.0, float(a.get("hours_per_day", 0))))
+        d = min(31, max(0, int(a.get("days_per_month", 30))))
+        cat = str(a.get("category", "General"))
+
+        sw = max(0.0, float(a.get("sim_wattage", w)))
+        sq = max(0, int(a.get("sim_quantity", q)))
+        sh = min(24.0, max(0.0, float(a.get("sim_hours", h))))
+        sd = min(31, max(0, int(a.get("sim_days", d))))
+
+        base_kwh_month = (w * q * h * d) / 1000.0
+        sim_kwh_month = (sw * sq * sh * sd) / 1000.0
+        saved_kwh = max(0.0, base_kwh_month - sim_kwh_month)
+
+        base_total_kwh += base_kwh_month
+        sim_total_kwh += sim_kwh_month
+
+        base_cats[cat] = base_cats.get(cat, 0.0) + base_kwh_month
+        sim_cats[cat] = sim_cats.get(cat, 0.0) + sim_kwh_month
+
+        items.append({
+            "id": a.get("id"),
+            "name": a.get("name", "Unnamed Appliance"),
+            "category": cat,
+            "wattage": w,
+            "quantity": q,
+            "hours_per_day": h,
+            "days_per_month": d,
+            "baseline_kwh": round(base_kwh_month, 2),
+            "baseline_cost": round(base_kwh_month * tariff, 0),
+            "baseline_co2": round(base_kwh_month * ef, 1),
+            "sim_wattage": sw,
+            "sim_quantity": sq,
+            "sim_hours": sh,
+            "sim_days": sd,
+            "simulated_kwh": round(sim_kwh_month, 2),
+            "simulated_cost": round(sim_kwh_month * tariff, 0),
+            "simulated_co2": round(sim_kwh_month * ef, 1),
+            "saved_kwh": round(saved_kwh, 2),
+            "saved_cost": round(saved_kwh * tariff, 0),
+            "saving_pct": round((saved_kwh / base_kwh_month * 100) if base_kwh_month else 0.0, 1),
+            "efficiency_upgrade": a.get("efficiency_upgrade"),
+            "upgrade_wattage": a.get("upgrade_wattage")
+        })
+
+    saved_total_kwh = max(0.0, base_total_kwh - sim_total_kwh)
+    reduction_pct = round((saved_total_kwh / base_total_kwh * 100) if base_total_kwh else 0.0, 1)
+
+    category_breakdown = []
+    all_cats = sorted(set(list(base_cats.keys()) + list(sim_cats.keys())))
+    for c in all_cats:
+        bk = round(base_cats.get(c, 0.0), 1)
+        sk = round(sim_cats.get(c, 0.0), 1)
+        category_breakdown.append({
+            "category": c,
+            "baseline_kwh": bk,
+            "simulated_kwh": sk,
+            "saved_kwh": round(max(0.0, bk - sk), 1),
+            "baseline_share": round((bk / base_total_kwh * 100) if base_total_kwh else 0.0, 1)
+        })
+
+    result = {
+        "baseline": {
+            "monthly_kwh": round(base_total_kwh, 1),
+            "daily_kwh": round(base_total_kwh / 30.0, 2),
+            "monthly_cost": round(base_total_kwh * tariff, 0),
+            "annual_cost": round(base_total_kwh * tariff * 12, 0),
+            "monthly_co2": round(base_total_kwh * ef, 1),
+            "annual_co2": round(base_total_kwh * ef * 12, 1)
+        },
+        "simulated": {
+            "monthly_kwh": round(sim_total_kwh, 1),
+            "daily_kwh": round(sim_total_kwh / 30.0, 2),
+            "monthly_cost": round(sim_total_kwh * tariff, 0),
+            "annual_cost": round(sim_total_kwh * tariff * 12, 0),
+            "monthly_co2": round(sim_total_kwh * ef, 1),
+            "annual_co2": round(sim_total_kwh * ef * 12, 1)
+        },
+        "impact": {
+            "saved_monthly_kwh": round(saved_total_kwh, 1),
+            "saved_annual_kwh": round(saved_total_kwh * 12, 1),
+            "saved_monthly_cost": round(saved_total_kwh * tariff, 0),
+            "saved_annual_cost": round(saved_total_kwh * tariff * 12, 0),
+            "saved_monthly_co2": round(saved_total_kwh * ef, 1),
+            "saved_annual_co2": round(saved_total_kwh * ef * 12, 1),
+            "reduction_pct": reduction_pct
+        },
+        "appliances": items,
+        "categories": category_breakdown
+    }
+
+    if measured_monthly_kwh is not None and measured_monthly_kwh > 0:
+        gap = round(float(measured_monthly_kwh) - base_total_kwh, 1)
+        result["meter_comparison"] = {
+            "measured_monthly_kwh": round(float(measured_monthly_kwh), 1),
+            "twin_baseline_kwh": round(base_total_kwh, 1),
+            "gap_kwh": gap,
+            "gap_cost": round(gap * tariff, 0),
+            "explanation": "Actual metered bill exceeds appliance inventory (suggests standby phantom loads or auxiliary machinery)." if gap > 0 else "Appliance inventory fully accounts for metered electricity consumption."
+        }
+
+    return result
+

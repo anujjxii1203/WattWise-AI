@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ComposedChart, Line, Legend } from "recharts";
-import { Zap, IndianRupee, Leaf, PiggyBank, Trash2, Pencil, Download, Upload, AlertTriangle, CheckCircle, Search, Filter, Calendar, TrendingUp, Info, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Target, ArrowRight } from "lucide-react";
+import { Zap, IndianRupee, Leaf, PiggyBank, Trash2, Pencil, Download, Upload, AlertTriangle, CheckCircle, Search, Filter, Calendar, TrendingUp, Info, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Target, ArrowRight, Cpu, Sliders, RefreshCw, Plus, Check, Sparkles, AlertCircle } from "lucide-react";
 import { api, BASE } from "./api";
 import { Card, Stat, Notice, Field, Btn, Tabs, Errors, inr, num } from "./ui.jsx";
 
@@ -920,3 +920,392 @@ export function Reports({ a, go }) {
     </div>
   );
 }
+
+export function DigitalTwin({ settings, a }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [showAdd, setShowAdd] = useState(false);
+  const [newApp, setNewApp] = useState({
+    name: "", category: "Appliances", wattage: 400, quantity: 1, hours_per_day: 6, days_per_month: 26
+  });
+
+  const loadTwin = async () => {
+    setLoading(true);
+    try {
+      const res = await api("/digital-twin");
+      setData(res);
+    } catch (e) {
+      console.error(e);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadTwin();
+  }, []);
+
+  const simulate = async (updatedApps) => {
+    try {
+      const res = await api("/digital-twin/simulate", {
+        method: "POST",
+        body: { appliances: updatedApps }
+      });
+      setData(res);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const updateAppField = (id, field, value) => {
+    if (!data) return;
+    const updated = data.appliances.map((app) => {
+      if (app.id === id) {
+        return { ...app, [field]: value };
+      }
+      return app;
+    });
+    simulate(updated);
+  };
+
+  const applyEfficiencyUpgrade = (id) => {
+    if (!data) return;
+    const updated = data.appliances.map((app) => {
+      if (app.id === id && app.upgrade_wattage) {
+        return { ...app, sim_wattage: app.upgrade_wattage };
+      }
+      return app;
+    });
+    simulate(updated);
+  };
+
+  const resetSimulation = () => {
+    if (!data) return;
+    const reset = data.appliances.map((app) => ({
+      ...app,
+      sim_wattage: app.wattage,
+      sim_quantity: app.quantity,
+      sim_hours: app.hours_per_day,
+      sim_days: app.days_per_month
+    }));
+    simulate(reset);
+    setMsg("Simulation reset to baseline.");
+    setTimeout(() => setMsg(""), 3000);
+  };
+
+  const saveTwin = async () => {
+    if (!data) return;
+    setSaving(true);
+    try {
+      await api("/digital-twin", {
+        method: "PUT",
+        body: { appliances: data.appliances }
+      });
+      setMsg("Digital Twin appliance model saved successfully.");
+      setTimeout(() => setMsg(""), 4000);
+    } catch (e) {
+      alert(e.message);
+    }
+    setSaving(false);
+  };
+
+  const addCustomAppliance = (e) => {
+    e.preventDefault();
+    if (!newApp.name) return;
+    const created = {
+      id: "custom_" + Date.now(),
+      ...newApp,
+      wattage: +newApp.wattage,
+      quantity: +newApp.quantity,
+      hours_per_day: +newApp.hours_per_day,
+      days_per_month: +newApp.days_per_month,
+      sim_wattage: +newApp.wattage,
+      sim_quantity: +newApp.quantity,
+      sim_hours: +newApp.hours_per_day,
+      sim_days: +newApp.days_per_month
+    };
+    const updated = [...(data?.appliances || []), created];
+    simulate(updated);
+    setNewApp({ name: "", category: "Appliances", wattage: 400, quantity: 1, hours_per_day: 6, days_per_month: 26 });
+    setShowAdd(false);
+  };
+
+  const removeAppliance = (id) => {
+    if (!data) return;
+    const updated = data.appliances.filter((app) => app.id !== id);
+    simulate(updated);
+  };
+
+  if (loading) return <p className="text-sm text-slate-500">Loading Energy Digital Twin...</p>;
+  if (!data) return <Notice tone="error">Failed to load Digital Twin data.</Notice>;
+
+  const b = data.baseline;
+  const s = data.simulated;
+  const imp = data.impact;
+
+  return (
+    <div className="space-y-5">
+      {/* Platform Workflow Banner */}
+      <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-slate-500">
+            <Cpu size={15} className="text-green-800" />
+            <span>WattWise Complete Optimization Workflow</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">1. Measure (Data)</span>
+            <span className="text-slate-300">→</span>
+            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">2. Analyze (Insights)</span>
+            <span className="text-slate-300">→</span>
+            <span className="rounded-md bg-green-800 text-white font-semibold px-2.5 py-0.5 shadow-xs">3. Simulate (Digital Twin)</span>
+            <span className="text-slate-300">→</span>
+            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">4. Recommend (Action Center)</span>
+            <span className="text-slate-300">→</span>
+            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">5. Track Savings</span>
+          </div>
+        </div>
+      </div>
+
+      {msg && <Notice>{msg}</Notice>}
+
+      {/* Real-Time Impact Dashboard Cards */}
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Baseline Digital Twin</span>
+          <div className="mt-1.5 text-2xl font-bold text-slate-900">{inr(b.monthly_cost)}<span className="text-xs font-normal text-slate-500">/mo</span></div>
+          <div className="mt-1 text-xs text-slate-600">{num(b.monthly_kwh)} kWh/mo · {b.daily_kwh} kWh/day</div>
+          <div className="mt-0.5 text-[11px] text-slate-400">Annual: {inr(b.annual_cost)} · {num(b.annual_co2)} kg CO₂e</div>
+        </div>
+
+        <div className="rounded-xl border border-teal-200 bg-teal-50/50 p-4 shadow-xs">
+          <span className="text-xs font-semibold uppercase tracking-wider text-teal-800">Simulated Digital Twin</span>
+          <div className="mt-1.5 text-2xl font-bold text-teal-950">{inr(s.monthly_cost)}<span className="text-xs font-normal text-slate-500">/mo</span></div>
+          <div className="mt-1 text-xs text-teal-800 font-medium">{num(s.monthly_kwh)} kWh/mo · {s.daily_kwh} kWh/day</div>
+          <div className="mt-0.5 text-[11px] text-teal-700">Annual: {inr(s.annual_cost)} · {num(s.annual_co2)} kg CO₂e</div>
+        </div>
+
+        <div className="rounded-xl border border-emerald-300 bg-emerald-50/60 p-4 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-900">Simulated Savings</span>
+            <span className="rounded-full bg-emerald-200/80 px-2 py-0.5 text-[11px] font-bold text-emerald-900">-{imp.reduction_pct}%</span>
+          </div>
+          <div className="mt-1.5 text-2xl font-bold text-emerald-950">Save {inr(imp.saved_monthly_cost)}<span className="text-xs font-normal text-slate-500">/mo</span></div>
+          <div className="mt-1 text-xs text-emerald-800 font-semibold">⚡ {num(imp.saved_monthly_kwh)} kWh monthly reduction</div>
+          <div className="mt-0.5 text-[11px] text-emerald-700 font-medium">Annual: Save {inr(imp.saved_annual_cost)}/year</div>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Environmental Benefit</span>
+          <div className="mt-1.5 text-2xl font-bold text-emerald-800">{num(imp.saved_monthly_co2)}<span className="text-xs font-normal text-slate-500"> kg CO₂e/mo</span></div>
+          <div className="mt-1 text-xs text-slate-600">~{num(imp.saved_annual_co2)} kg avoided annually</div>
+          <div className="mt-0.5 text-[11px] text-slate-400">Based on CEA Factor: {settings.emission_factor} kg/kWh</div>
+        </div>
+      </div>
+
+      {/* Meter Reconciliation Notice if available */}
+      {data.meter_comparison && (
+        <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Sparkles size={16} className="text-teal-700" />
+              <span className="text-xs font-bold uppercase tracking-wide text-slate-700">Meter vs Digital Twin Reconciliation</span>
+            </div>
+            <span className="text-xs text-slate-500">
+              Metered: <b>{data.meter_comparison.measured_monthly_kwh} kWh/mo</b> vs Digital Twin: <b>{data.meter_comparison.twin_baseline_kwh} kWh/mo</b>
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-slate-600">{data.meter_comparison.explanation}</p>
+          {data.meter_comparison.gap_kwh > 0 && (
+            <p className="mt-1 text-xs font-medium text-amber-800">
+              Unaccounted baseline gap: <b>+{data.meter_comparison.gap_kwh} kWh/mo (~{inr(data.meter_comparison.gap_cost)}/mo)</b>. Consider adding standby office equipment or refrigeration runtime.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Digital Twin Category Breakdown Chart */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card title="Digital Twin Category Comparison (Baseline vs Simulated)" className="lg:col-span-2">
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data.categories}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="category" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <Tooltip formatter={(val, name) => [`${num(val)} kWh/mo`, name === "baseline_kwh" ? "Baseline Twin" : "Simulated Twin"]} />
+                <Legend />
+                <Bar dataKey="baseline_kwh" name="Baseline (kWh)" fill="#64748b" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="simulated_kwh" name="Simulated (kWh)" fill={GREEN} radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        <Card title="Quick Twin Actions">
+          <div className="space-y-3 text-xs">
+            <p className="text-slate-600">
+              Modify appliance operating hours, days, or click <b>"Upgrade Model"</b> on individual items below to simulate energy efficiency retrofits in real time.
+            </p>
+            <div className="pt-1 flex flex-col gap-2">
+              <Btn onClick={saveTwin} disabled={saving}>
+                <Check size={14} /> {saving ? "Saving..." : "Save Digital Twin"}
+              </Btn>
+              <Btn kind="ghost" onClick={resetSimulation}>
+                <RefreshCw size={14} /> Reset to Baseline
+              </Btn>
+              <Btn kind="ghost" onClick={() => setShowAdd(!showAdd)}>
+                <Plus size={14} /> {showAdd ? "Close Appliance Form" : "Add Custom Appliance"}
+              </Btn>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Add Custom Appliance Modal / Form */}
+      {showAdd && (
+        <Card title="Add Custom Appliance to Digital Twin">
+          <form onSubmit={addCustomAppliance} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <Field label="Appliance Name" value={newApp.name} onChange={(e) => setNewApp({ ...newApp, name: e.target.value })} placeholder="e.g. Water Cooler, Server Rack" required />
+            <label className="block text-sm">
+              <span className="font-medium text-slate-700">Category</span>
+              <select value={newApp.category} onChange={(e) => setNewApp({ ...newApp, category: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm">
+                {["Cooling", "Lighting", "Appliances", "Office Equipment", "General"].map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </label>
+            <Field label="Rated Power (Watts)" type="number" min="1" max="100000" value={newApp.wattage} onChange={(e) => setNewApp({ ...newApp, wattage: e.target.value })} required />
+            <Field label="Quantity" type="number" min="1" max="500" value={newApp.quantity} onChange={(e) => setNewApp({ ...newApp, quantity: e.target.value })} required />
+            <Field label="Active Hours / Day" type="number" step="0.5" min="0" max="24" value={newApp.hours_per_day} onChange={(e) => setNewApp({ ...newApp, hours_per_day: e.target.value })} required />
+            <Field label="Days / Month" type="number" min="1" max="31" value={newApp.days_per_month} onChange={(e) => setNewApp({ ...newApp, days_per_month: e.target.value })} required />
+            <div className="flex gap-2 sm:col-span-2 lg:col-span-3 pt-1">
+              <Btn type="submit"><Plus size={14} /> Add to Twin</Btn>
+              <Btn kind="ghost" type="button" onClick={() => setShowAdd(false)}>Cancel</Btn>
+            </div>
+          </form>
+        </Card>
+      )}
+
+      {/* Interactive Digital Twin Appliance Inventory & Simulator Grid */}
+      <Card title={`Interactive Digital Twin Inventory (${data.appliances.length} Appliances)`}>
+        <div className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {data.appliances.map((app) => {
+              const isUpgraded = app.sim_wattage < app.wattage;
+              const isHoursReduced = app.sim_hours < app.hours_per_day;
+              const isDaysReduced = app.sim_days < app.days_per_month;
+              const hasChanged = isUpgraded || isHoursReduced || isDaysReduced || app.sim_quantity !== app.quantity;
+
+              return (
+                <div key={app.id} className={`rounded-xl border p-4 transition-all ${hasChanged ? "border-emerald-300 bg-emerald-50/30" : "border-slate-200 bg-white"} shadow-xs flex flex-col justify-between space-y-3`}>
+                  <div>
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 rounded bg-slate-100 px-1.5 py-0.5">
+                          {app.category}
+                        </span>
+                        <h4 className="mt-1 font-semibold text-slate-900 text-sm">{app.name}</h4>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeAppliance(app.id)}
+                        className="text-slate-400 hover:text-red-700 p-1"
+                        title="Remove from twin"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+
+                    <div className="mt-2 text-xs text-slate-600">
+                      Baseline: <b>{app.quantity}x</b> @ <b>{app.wattage}W</b> · {app.hours_per_day}h/day ({app.days_per_month}d/mo)
+                      <div className="font-medium text-slate-800 mt-0.5">
+                        = {app.baseline_kwh} kWh/mo ({inr(app.baseline_cost)})
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Simulation Controls */}
+                  <div className="rounded-lg bg-white/90 p-3 border border-slate-200/80 space-y-2.5 text-xs">
+                    <span className="font-bold text-slate-700 uppercase tracking-wider text-[10px] flex items-center gap-1">
+                      <Sliders size={12} className="text-green-800" /> Digital Twin Simulation Controls
+                    </span>
+
+                    {/* Operating hours slider */}
+                    <div>
+                      <div className="flex justify-between text-[11px] text-slate-600 font-medium">
+                        <span>Daily Runtime:</span>
+                        <span className="font-bold text-slate-900">{app.sim_hours} hrs/day</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="24"
+                        step="0.5"
+                        value={app.sim_hours}
+                        onChange={(e) => updateAppField(app.id, "sim_hours", +e.target.value)}
+                        className="w-full accent-green-800 h-1.5 cursor-pointer mt-1"
+                      />
+                    </div>
+
+                    {/* Days per month slider */}
+                    <div>
+                      <div className="flex justify-between text-[11px] text-slate-600 font-medium">
+                        <span>Active Days:</span>
+                        <span className="font-bold text-slate-900">{app.sim_days} days/mo</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="31"
+                        step="1"
+                        value={app.sim_days}
+                        onChange={(e) => updateAppField(app.id, "sim_days", +e.target.value)}
+                        className="w-full accent-green-800 h-1.5 cursor-pointer mt-1"
+                      />
+                    </div>
+
+                    {/* Efficiency Upgrade button */}
+                    {app.efficiency_upgrade && (
+                      <div className="pt-1">
+                        <button
+                          type="button"
+                          onClick={() => applyEfficiencyUpgrade(app.id)}
+                          className={`w-full rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-colors flex items-center justify-center gap-1.5 ${
+                            isUpgraded
+                              ? "bg-emerald-100 text-emerald-900 border border-emerald-300"
+                              : "bg-slate-100 text-slate-700 border border-slate-200 hover:bg-green-50 hover:text-green-900 hover:border-green-200"
+                          }`}
+                        >
+                          <Sparkles size={11} className={isUpgraded ? "text-emerald-700" : "text-amber-600"} />
+                          {isUpgraded ? "Upgraded (" + app.upgrade_wattage + "W active)" : app.efficiency_upgrade}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Appliance Saving Outcome */}
+                  <div className="border-t border-slate-100 pt-2 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="text-slate-500 text-[11px]">Simulated: </span>
+                      <span className="font-bold text-slate-900">{app.simulated_kwh} kWh</span>
+                      <span className="text-slate-500"> ({inr(app.simulated_cost)})</span>
+                    </div>
+                    {app.saved_kwh > 0 ? (
+                      <span className="font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded text-[11px]">
+                        Save {inr(app.saved_cost)} ({app.saving_pct}%)
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 text-[11px]">No change</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+

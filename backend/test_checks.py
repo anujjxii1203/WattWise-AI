@@ -123,3 +123,27 @@ def test_check_5_production_persistence_and_connectivity(client, tmp_path, monke
     assert len(found) == 1
     assert found[0]["consumption_kwh"] == 42.0
     assert found[0]["notes"] == "Christmas event"
+
+def test_check_6_energy_digital_twin_and_appliance_estimator(client):
+    """Check 6: Energy Digital Twin & Appliance Estimator calculates baseline, simulates changes and savings."""
+    res = client.get("/api/digital-twin").get_json()["data"]
+    assert "baseline" in res and "simulated" in res and "impact" in res
+    assert len(res["appliances"]) >= 5
+    assert res["baseline"]["monthly_kwh"] > 0
+    assert res["baseline"]["monthly_cost"] > 0
+    assert res["impact"]["reduction_pct"] == 0.0  # initial baseline has no changes
+
+    # Simulate reducing runtime on first appliance
+    apps = [dict(a) for a in res["appliances"]]
+    apps[0]["sim_hours"] = max(1.0, apps[0]["hours_per_day"] - 2.0)
+    sim_res = client.post("/api/digital-twin/simulate", json={"appliances": apps}).get_json()["data"]
+    assert sim_res["simulated"]["monthly_kwh"] < sim_res["baseline"]["monthly_kwh"]
+    assert sim_res["impact"]["saved_monthly_cost"] > 0
+    assert sim_res["impact"]["reduction_pct"] > 0
+
+    # Save custom digital twin
+    put_res = client.put("/api/digital-twin", json={"appliances": apps})
+    assert put_res.status_code == 200
+    saved_res = client.get("/api/digital-twin").get_json()["data"]
+    assert saved_res["appliances"][0]["sim_hours"] == apps[0]["sim_hours"]
+

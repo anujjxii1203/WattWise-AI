@@ -133,6 +133,51 @@ def create_app():
         if e1 or e2: return fail("Validation failed.", 422, [e for e in (e1, e2) if e])
         return ok(calc.scenario(k, r, s["tariff"], s["emission_factor"]))
 
+    @app.get("/api/digital-twin")
+    def get_digital_twin():
+        db = store.load()
+        s = db["settings"]
+        apps = db.get("appliances", calc.DEFAULT_APPLIANCES)
+        measured = None
+        if db["records"]:
+            df = calc._df(db["records"])
+            daily = df.groupby("date").consumption_kwh.sum()
+            measured = float(daily.mean() * 30.0) if len(daily) else None
+        res = calc.digital_twin_estimate(apps, float(s.get("tariff", 7.0)), float(s.get("emission_factor", 0.82)), measured)
+        return ok(res)
+
+    @app.post("/api/digital-twin/simulate")
+    def simulate_digital_twin():
+        b = request.get_json(silent=True) or {}
+        apps = b.get("appliances")
+        if not isinstance(apps, list): return fail("appliances list is required", 422)
+        db = store.load()
+        s = db["settings"]
+        measured = None
+        if db["records"]:
+            df = calc._df(db["records"])
+            daily = df.groupby("date").consumption_kwh.sum()
+            measured = float(daily.mean() * 30.0) if len(daily) else None
+        res = calc.digital_twin_estimate(apps, float(s.get("tariff", 7.0)), float(s.get("emission_factor", 0.82)), measured)
+        return ok(res)
+
+    @app.put("/api/digital-twin")
+    def save_digital_twin():
+        b = request.get_json(silent=True) or {}
+        apps = b.get("appliances")
+        if not isinstance(apps, list): return fail("appliances list is required", 422)
+        db = store.load()
+        db["appliances"] = apps
+        store.save(db)
+        s = db["settings"]
+        measured = None
+        if db["records"]:
+            df = calc._df(db["records"])
+            daily = df.groupby("date").consumption_kwh.sum()
+            measured = float(daily.mean() * 30.0) if len(daily) else None
+        res = calc.digital_twin_estimate(apps, float(s.get("tariff", 7.0)), float(s.get("emission_factor", 0.82)), measured)
+        return ok(res)
+
     @app.route("/api/settings", methods=["GET", "PUT"])
     def settings():
         db = store.load()

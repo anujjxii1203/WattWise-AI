@@ -1,11 +1,19 @@
 import { useState, useEffect, useCallback } from "react";
-import { LayoutDashboard, PenLine, Lightbulb, LineChart, Calculator as CalcIcon, Sun, FileText, Menu, X, Zap } from "lucide-react";
+import { LayoutDashboard, PenLine, Lightbulb, LineChart, Calculator as CalcIcon, Sun, FileText, Menu, X, Zap, Cpu } from "lucide-react";
 import { api } from "./api";
 import { Notice, Btn } from "./ui.jsx";
-import { Dashboard, DataPage, Insights, Forecast, Calculator, Solar, Reports } from "./pages.jsx";
+import { Dashboard, DataPage, Insights, DigitalTwin, Forecast, Calculator, Solar, Reports } from "./pages.jsx";
 
-const NAV = [["dashboard", "Dashboard", LayoutDashboard], ["data", "Energy data", PenLine], ["insights", "Insights", Lightbulb], ["forecast", "Forecast", LineChart],
-  ["calculator", "Cost & carbon", CalcIcon], ["solar", "Solar planner", Sun], ["reports", "Reports", FileText]];
+const NAV = [
+  ["dashboard", "Dashboard", LayoutDashboard],
+  ["data", "Energy data", PenLine],
+  ["insights", "Insights", Lightbulb],
+  ["twin", "Digital Twin", Cpu],
+  ["forecast", "Forecast", LineChart],
+  ["calculator", "Cost & carbon", CalcIcon],
+  ["solar", "Solar planner", Sun],
+  ["reports", "Reports", FileText]
+];
 
 export default function App() {
   const [page, setPage] = useState("dashboard"), [open, setOpen] = useState(false), [a, setA] = useState(null), [records, setRecords] = useState([]), [settings, setSettings] = useState(null), [err, setErr] = useState("");
@@ -19,7 +27,7 @@ export default function App() {
     if (err) return <div className="space-y-3"><Notice tone="error">{err}</Notice><Btn onClick={refresh}>Retry</Btn></div>;
     if (!a) return <p className="text-sm text-slate-500" role="status">Loading your energy data…</p>;
     const p = { a, go, records, settings, refresh };
-    return { dashboard: <Dashboard {...p} />, data: <DataPage {...p} />, insights: <Insights {...p} />, forecast: <Forecast />, calculator: <Calculator key={JSON.stringify(settings)} {...p} />, solar: <Solar {...p} />, reports: <Reports {...p} /> }[page];
+    return { dashboard: <Dashboard {...p} />, data: <DataPage {...p} />, insights: <Insights {...p} />, twin: <DigitalTwin {...p} />, forecast: <Forecast />, calculator: <Calculator key={JSON.stringify(settings)} {...p} />, solar: <Solar {...p} />, reports: <Reports {...p} /> }[page];
   };
   return (<div className="min-h-screen lg:flex">
     <aside className="hidden w-60 shrink-0 border-r border-slate-200 bg-white lg:block"><div className="flex items-center gap-2 p-5 text-lg font-semibold text-green-800"><Zap size={20} />WattWise AI</div>{nav}</aside>
