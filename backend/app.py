@@ -23,8 +23,12 @@ def num(body, key, label, lo=0, hi=1e7, default=None):
 def create_app():
     app = Flask(__name__)
     app.config["MAX_CONTENT_LENGTH"] = 1024 * 1024
-    origins = list(set([os.environ.get("FRONTEND_ORIGIN", "http://localhost:5173"), "http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5174", "http://127.0.0.1:5174"]))
-    CORS(app, origins=origins)
+    origins = os.environ.get("FRONTEND_ORIGIN", "*")
+    if origins == "*":
+        CORS(app, resources={r"/api/*": {"origins": "*"}})
+    else:
+        allowed = list(set([o.strip() for o in origins.split(",") if o.strip()] + ["http://localhost:5173", "http://127.0.0.1:5173"]))
+        CORS(app, origins=allowed)
 
     @app.errorhandler(404)
     def nf(e): return fail("Route not found.", 404)
@@ -159,6 +163,9 @@ def create_app():
             df = pd.DataFrame(a["periods"].get(request.args.get("period", "monthly"), []))
         return Response(df.to_csv(index=False), mimetype="text/csv", headers={"Content-Disposition": f"attachment; filename=wattwise_{kind}.csv"})
     return app
+ 
+app = create_app()
 
 if __name__ == "__main__":
-    create_app().run(port=int(os.environ.get("PORT", 5000)), debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=os.environ.get("FLASK_DEBUG", "0") == "1")
