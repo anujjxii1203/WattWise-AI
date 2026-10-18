@@ -105,7 +105,8 @@ def create_app():
         if e: return fail(e, 422)
         if not db["records"]: return ok({"status": "insufficient", "message": "No data yet. Add records first."})
         df = calc._df(db["records"])
-        out = forecast(df.groupby("date").consumption_kwh.sum().sort_index(), int(h))
+        s = db["settings"]
+        out = forecast(df.groupby("date").consumption_kwh.sum().sort_index(), int(h), float(s.get("tariff", 7.0)), float(s.get("emission_factor", 0.82)))
         out["uses_demo_data"] = any(r.get("demo") for r in db["records"])
         return ok(out)
 

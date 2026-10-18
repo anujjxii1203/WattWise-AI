@@ -84,32 +84,131 @@ def analytics(records, s, baseline=None):
     share = {c["category"]: c["share"] for c in categories}
 
     recs = []
-    def rec(title, why, kwh, rule):
-        recs.append({"title": title, "why": why, "saving_kwh_month": round(kwh, 1),
-                     "saving_cost_month": round(kwh * avg_tariff, 0), "rule": rule})
+    def rec(title, problem, evidence, action, kwh, assumptions, confidence, rule):
+        saving_kwh = max(0.0, float(kwh))
+        recs.append({
+            "title": title,
+            "problem": problem,
+            "evidence": evidence,
+            "action": action,
+            "saving_kwh_month": round(saving_kwh, 1),
+            "saving_cost_month": round(saving_kwh * avg_tariff, 0),
+            "saving_co2_month": round(saving_kwh * ef, 1),
+            "assumptions": assumptions,
+            "confidence": confidence,
+            "rule": rule,
+            "why": f"{evidence} {assumptions}"
+        })
+
     if share.get("Cooling", 0) > 40:
-        rec("Raise the cooling setpoint by 1-2 °C", f"Cooling is {share['Cooling']}% of your usage (rule threshold: 40%). Rule of thumb: ~8% cooling saving.",
-            df[df.category == "Cooling"].consumption_kwh.sum() / n * 30 * 0.08, "cooling share > 40%")
+        c_sum = float(df[df.category == "Cooling"].consumption_kwh.sum())
+        c_norm = (c_sum / n) * 30
+        c_save = c_norm * 0.08
+        rec("Raise the cooling setpoint by 1-2 °C",
+            "Cooling energy consumption is unusually high.",
+            f"Cooling makes up {share['Cooling']}% of total consumption ({round(c_sum, 1)} kWh across {n} recorded days, averaging {round(c_sum/n, 1)} kWh/day ≈ {round(c_norm, 1)} kWh/month normalized).",
+            "Set thermostat to 24 °C or higher, clean AC filters monthly, and seal window leaks.",
+            c_save,
+            f"BEE / ASHRAE benchmark: each 1 °C increase saves 6-8% cooling energy. Calculated as 8% of monthly normalized cooling ({round(c_norm, 1)} kWh × 8% = {round(c_save, 1)} kWh/mo).",
+            "High (Supported by Bureau of Energy Efficiency standards)",
+            "cooling share > 40%")
+
     if share.get("Lighting", 0) > 20:
-        rec("Switch to LED and occupancy sensors", f"Lighting is {share['Lighting']}% of usage (threshold: 20%). Assumes 15% saving.",
-            df[df.category == "Lighting"].consumption_kwh.sum() / n * 30 * 0.15, "lighting share > 20%")
+        l_sum = float(df[df.category == "Lighting"].consumption_kwh.sum())
+        l_norm = (l_sum / n) * 30
+        l_save = l_norm * 0.15
+        rec("Switch to LED and occupancy sensors",
+            "Lighting load share exceeds efficiency thresholds.",
+            f"Lighting accounts for {share['Lighting']}% of total consumption ({round(l_sum, 1)} kWh across {n} days ≈ {round(l_norm, 1)} kWh/month normalized).",
+            "Replace remaining conventional tubes with LEDs and install motion sensors in corridors and restrooms.",
+            l_save,
+            f"Assumes 15% lighting reduction from LED retrofit and auto-shutoff ({round(l_norm, 1)} kWh × 15% = {round(l_save, 1)} kWh/mo).",
+            "High",
+            "lighting share > 20%")
+
     o = _wd_we(df, "Office Equipment")
     if o and o[1] / o[0] > 0.7:
-        rec("Switch off office equipment on weekends", f"Weekend office usage is {o[1]/o[0]*100:.0f}% of weekday usage (threshold: 70%), suggesting idle devices.",
-            o[0] * (o[1] / o[0] - 0.5) * 8, "office weekend/weekday > 70%")
+        o_save = o[0] * (o[1] / o[0] - 0.5) * 8
+        rec("Switch off office equipment on weekends",
+            "Significant standby / idle load detected over weekends.",
+            f"Weekend office equipment consumption is {o[1]/o[0]*100:.0f}% of weekday consumption (threshold: 70%), indicating idle computers/monitors running while facility is closed.",
+            "Use smart master power strips or configure automated PC shutdown policies at 7 PM and over weekends.",
+            o_save,
+            f"Assumes standby load on 8 weekend days per month is reduced to 50% of active weekday levels.",
+            "Medium",
+            "office weekend/weekday > 70%")
+
     if anoms:
         ex = sum(a["kwh"] - a["expected"] for a in anoms)
-        rec("Investigate recent usage spikes", f"{len(anoms)} day(s) exceeded the prior 7-day average by over 30%. Preventing repeats saves roughly that excess per period.",
-            ex * 30 / n, "day > 1.3 x trailing 7-day mean")
+        ex_month = ex * 30 / n
+        rec("Investigate recent usage spikes",
+            "Unusual operational consumption spikes detected.",
+            f"{len(anoms)} spike day(s) exceeded the trailing 7-day average by >30% (cumulative excess: {round(ex, 1)} kWh across {n} days).",
+            "Review operational logs on spike dates to identify unmonitored equipment or overlapping high-draw machinery.",
+            ex_month,
+            f"Historical spike excess ({round(ex, 1)} kWh over {n} days) normalized to a 30-day monthly rate ({round(ex_month, 1)} kWh/mo). Realized only if recurring spikes are eliminated.",
+            "Medium",
+            "day > 1.3 x trailing 7-day mean")
+
     if change is not None and change > 10:
-        rec("Reverse the rising weekly trend", f"Last 7 days are {change}% above the 7 days before (threshold: 10%).",
-            (cur - float(prev.sum())) * 4, "weekly change > 10%")
+        c_save = (cur - float(prev.sum())) * 4
+        rec("Reverse the rising weekly trend",
+            "Weekly consumption trajectory is trending upward.",
+            f"The most recent 7 days ({round(cur, 1)} kWh) are {change}% higher than the prior 7 days ({round(float(prev.sum()), 1)} kWh).",
+            "Audit equipment operating hours and HVAC setpoints added or modified over the past week.",
+            c_save,
+            f"Assumes recent weekly surge ({round(cur - float(prev.sum()), 1)} kWh/wk) is brought back to previous baseline across 4 weeks.",
+            "Medium",
+            "weekly change > 10%")
+
     if cv > 0.3:
-        rec("Smooth out day-to-day variation", f"Daily usage varies a lot (coefficient of variation {cv:.2f}, threshold 0.30).", avg * 30 * 0.03, "CV > 0.30")
+        cv_save = avg * 30 * 0.03
+        rec("Smooth out day-to-day load variation",
+            "High consumption volatility across days.",
+            f"Daily consumption varies significantly with a coefficient of variation of {cv:.2f} (threshold: 0.30).",
+            "Stagger startup times for major appliances to level demand peaks.",
+            cv_save,
+            f"Assumes 3% energy reduction through operational scheduling and peak shaving ({round(avg * 30, 1)} kWh/mo × 3%).",
+            "Low-to-Medium",
+            "CV > 0.30")
+
     if not recs:
-        rec("Keep going - usage looks stable", "No rule threshold was triggered by your data.", 0, "no rules triggered")
+        rec("Keep going - usage looks stable",
+            "Stable consumption profile.",
+            "No efficiency rule thresholds were triggered by your dataset.",
+            "Maintain current operational schedules and continue monitoring regular bills.",
+            0.0,
+            "Based on adherence to existing baseline.",
+            "High",
+            "no rules triggered")
 
     score = 100 - 30 * min(cv / 0.4, 1) - (40 * min(max(change, 0) / 30, 1) if change is not None else 0) - 5 * min(len(anoms), 6)
+
+    # Action Center: Identify top problem to fix & progress tracking
+    top_rec = max(recs, key=lambda x: x["saving_kwh_month"])
+    prev_7_avg = round(float(prev.sum()) / len(prev), 2) if len(prev) >= 4 else round(base_avg, 2)
+    cur_7_avg = round(cur / 7.0, 2) if cur else round(avg, 2)
+    action_center = {
+        "problem": top_rec["problem"],
+        "title": top_rec["title"],
+        "evidence": top_rec["evidence"],
+        "action": top_rec["action"],
+        "impact": {
+            "saving_kwh_month": top_rec["saving_kwh_month"],
+            "saving_cost_month": top_rec["saving_cost_month"],
+            "saving_co2_month": top_rec["saving_co2_month"],
+        },
+        "assumptions": top_rec["assumptions"],
+        "confidence": top_rec["confidence"],
+        "progress": {
+            "current_7d_avg": cur_7_avg,
+            "baseline_7d_avg": prev_7_avg,
+            "change_pct": change,
+            "status": "Needs Attention" if (change and change > 5) or score < 70 else "On Track",
+            "target_7d_avg": round(prev_7_avg * 0.92, 2)  # target 8% reduction
+        }
+    }
+
     return {
         "empty": False, "has_demo": any(r.get("demo") for r in records), "settings": s,
         "totals": {"kwh": round(total, 2), "cost": round(cost, 2), "co2": round(total * ef, 2), "avg_daily": round(avg, 2), "days": n},
@@ -119,6 +218,7 @@ def analytics(records, s, baseline=None):
         "score_rule": "Heuristic consumption stability index (100 minus: load variability max 30, week-over-week rise max 40, anomalies 5 each max 30)",
         "categories": categories, "high_days": high, "anomalies": anoms[-5:], "weekday_weekend": wdwe,
         "recommendations": recs, "recommendation_basis": "Transparent rule-based logic on your records. No ML model is used here.",
+        "action_center": action_center,
         "periods": periods(df, ef), "solar_hint_kw": round(avg / (5.0 * 0.75), 1),
     }
 

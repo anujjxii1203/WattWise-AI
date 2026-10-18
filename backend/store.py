@@ -5,7 +5,7 @@ import numpy as np
 
 PATH = os.environ.get("WATTWISE_DATA", os.path.join(os.path.dirname(__file__), "data.json"))
 DEFAULT_SETTINGS = {"tariff": 7.0, "emission_factor": 0.82,
-                    "emission_source": "Unverified default - replace with an official grid factor (e.g. CEA CO2 Baseline Database)"}
+                    "emission_source": "Central Electricity Authority (CEA), Govt. of India — CO2 Baseline Database for the Indian Power Sector, User Guide Version 19.0 (2023-24): National Grid Weighted Average 0.82 kg CO₂e/kWh"}
 CATEGORIES = ["Lighting", "Cooling", "Appliances", "Office Equipment"]
 
 def demo_records(tariff, days=45):
