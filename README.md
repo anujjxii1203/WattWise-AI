@@ -15,14 +15,12 @@ WattWise AI is an open, software-driven energy intelligence platform built for a
 
 #### Backend (Terminal 1)
 ```powershell
-cd d:\websites\hackthon\backend
 python app.py
 ```
 *Backend runs on: `http://localhost:5000` (API: `http://localhost:5000/api`)*
 
 #### Frontend (Terminal 2)
 ```powershell
-cd d:\websites\hackthon\frontend
 npm.cmd run dev
 ```
 *Frontend runs on: `http://localhost:5173`*
@@ -34,14 +32,12 @@ npm.cmd run dev
 Run the full backend test suite covering CRUD, calculations, solar physical math, negative baseline savings, and Scikit-learn ML forecasting:
 
 ```powershell
-cd d:\websites\hackthon\backend
 python -m pytest test_wattwise.py -v
 ```
 *(All 10 tests passing with 100% pass rate)*
 
 To verify the production build of the frontend:
 ```powershell
-cd d:\websites\hackthon\frontend
 npm.cmd run build
 ```
 
